@@ -3,6 +3,8 @@
 require_once( "path.class.php" );
 
 class File_Browser {
+	private $restrict_to = null;
+	private $top_level;
 	private $current_dir;
 	private $web_root;
 	private $list;
@@ -11,9 +13,10 @@ class File_Browser {
 
 
 	function __construct() {
-		$path              = $this->_get_start_path( $_REQUEST );
-		$this->web_root    = $this->_get_web_root( $_REQUEST );
-		$this->current_dir = new Path( $path, $this->web_root );
+		$path               = $this->_get_start_path( $_REQUEST );
+		$this->web_root     = $this->_get_web_root( $_REQUEST );
+		$this->restrict_to  = $this->_restrict_to( $_REQUEST );
+		$this->current_dir  = new Path( $path, $this->web_root );
 
 		if ( $this->_can_read_directory( $this->current_dir ) ) {
 			$this->_create_list();
@@ -39,7 +42,8 @@ class File_Browser {
 
 	private function _filter_list( $list ) {
 		foreach( $list as $index => $path ) {
-			if ( $path->is_hidden_file() ) {
+
+			if ( $path->is_hidden_file() || $this->_is_restricted( $path ) ) {
 				unset( $list[$index] );
 			}
 		}
@@ -55,6 +59,16 @@ class File_Browser {
 		$root_url =  str_replace( basename( $_SERVER['PHP_SELF'] ), "", $current_url );
 		return ( array_key_exists("web_root", $array) ) ? $array["web_root"] : $root_url;
 	}
+
+	private function _restrict_to( $array ) {
+		return ( !empty($array["restrict_to"]) ) ? realpath($array["restrict_to"]) : null;
+	}
+
+	private function _is_restricted( $path ) {
+		return ( !empty($this->restrict_to) && !is_numeric(strpos($path->path, $this->restrict_to)) ) ? true : false;
+	}
+
+	
 
 	private function _can_read_directory( $path ) {
 		if ( ! $path->is_directory() ) {
